@@ -5,12 +5,27 @@ import pyocr.builders
 import pyocr.pyocr
 
 from paperwork.model.common.page import BasicPage
+from paperwork.util import split_words
 from paperwork.util import surface2image
+
+
+class PdfBox(object):
+    def __init__(self, content, position):
+        self.content = content
+        self.position = position
+
+    def __str__(self):
+        return ("((%d, %d), (%d, %d)) -> %s"
+                % ((self.position[0][0], self.position[0][1],
+                    self.position[1][0], self.position[1][1],
+                    self.content)))
+
 
 class PdfPage(BasicPage):
     FILE_PREFIX = "paper."
     EXT_TXT = "txt"
     EXT_BOX = "words"
+    IMG_RENDER_FACTOR = 2
 
     def __init__(self, doc, page_nb):
         BasicPage.__init__(self, doc, page_nb)
@@ -52,6 +67,31 @@ class PdfPage(BasicPage):
 
     text = property(__get_text)
 
+
+    def __get_pdf_boxes(self):
+        all_boxes = {}
+        for line in self.text:
+            for word in split_words(line):
+                if word in all_boxes:
+                    continue
+                boxes = []
+                rects = self.pdf_page.find_text(word)
+                for rect in rects:
+                    position = ((int(rect.x1 * self.IMG_RENDER_FACTOR),
+                                 int(rect.x2 * self.IMG_RENDER_FACTOR)),
+                                (int(rect.y1 * self.IMG_RENDER_FACTOR),
+                                 int(rect.y2 * self.IMG_RENDER_FACTOR)))
+                    box = PdfBox(word, position)
+                    boxes.append(box)
+                all_boxes[word] = boxes
+        result = []
+        for boxes in all_boxes.values():
+            for box in boxes:
+                print str(box)
+                result.append(box)
+        return result
+
+
     def __get_boxes(self):
         """
         Get all the word boxes of this page.
@@ -72,8 +112,7 @@ class PdfPage(BasicPage):
                 print "Unable to get boxes for '%s': %s" % (self.doc.docid, exc)
                 return []
         except OSError, exc:  # os.stat() failed
-            # TODO(Jflesch): Can't find poppler.Page.get_text_layout() ?
-            pass
+            return self.__get_pdf_boxes()
         return []
 
     boxes = property(__get_boxes)
@@ -93,7 +132,7 @@ class PdfPage(BasicPage):
         return surface2image(surface)
 
     def __get_img(self):
-        return self.__render_img(2)
+        return self.__render_img(self.IMG_RENDER_FACTOR)
 
     img = property(__get_img)
 
