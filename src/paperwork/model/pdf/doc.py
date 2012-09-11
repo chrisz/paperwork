@@ -1,5 +1,7 @@
 import gio
+import os
 import poppler
+import shutil
 
 from paperwork.model.common.doc import BasicDoc
 from paperwork.model.pdf.page import PdfPage
@@ -7,6 +9,36 @@ from paperwork.model.pdf.page import PdfPage
 
 PDF_FILENAME = "doc.pdf"
 PDF_IMPORT_MIN_KEYWORDS = 5
+
+
+class PdfDocExporter(object):
+    can_change_quality = False
+
+    def __init__(self, doc):
+        self.pdfpath = ("%s/%s" % (doc.path, PDF_FILENAME))
+
+    def get_mime_type(self):
+        return 'application/pdf'
+
+    def get_file_extensions(self):
+        return ['pdf']
+
+    def save(self, target_path):
+        shutil.copy(self.pdfpath, target_path)
+        return target_path
+
+    def set_quality(self, quality):
+        raise NotImplementedError()
+
+    def estimate_size(self):
+        return os.path.getsize(self.pdfpath)
+
+    def get_img(self):
+        raise NotImplementedError()
+
+    def __str__(self):
+        return 'PDF'
+
 
 class PdfDoc(BasicDoc):
     can_edit = False
@@ -21,7 +53,7 @@ class PdfDoc(BasicDoc):
     def _open(self):
         self.pdf = poppler.document_new_from_file(
             ("file://%s/%s" % (self.path, PDF_FILENAME)),
-             password="cowabunga")
+             password=None)
         self.pages = [PdfPage(self, page_idx) \
                       for page_idx in range(0, self.pdf.get_n_pages())]
 
@@ -56,6 +88,12 @@ class PdfDoc(BasicDoc):
         if nb_keywords < PDF_IMPORT_MIN_KEYWORDS:
             self.redo_ocr(config.ocrlang)
 
+    @staticmethod
+    def get_export_formats():
+        return ['PDF']
+
+    def build_exporter(self, file_format='pdf'):
+        return PdfDocExporter(self)
 
 def is_pdf_doc(filelist):
     return PDF_FILENAME in filelist

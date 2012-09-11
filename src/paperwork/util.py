@@ -2,11 +2,13 @@
 Various tiny functions that didn't fit anywhere else.
 """
 
+import array
 import os
 import re
 import StringIO
 import unicodedata
 
+import cairo
 import Image
 import gettext
 import glib
@@ -104,14 +106,24 @@ def load_uifile(filename):
         try:
             widget_tree.add_from_file(ui_file)
         except glib.GError, exc:
-            print "Try to used UI file %s but failed: %s" % (ui_file, str(exc))
+            print "Tried to use UI file %s but failed: %s" % (ui_file, str(exc))
             continue
         has_ui_file = True
         print "UI file used: " + ui_file
         break
     if not has_ui_file:
-        raise Exception("Can't find ressource file. Aborting")
+        raise Exception("Can't find resource file. Aborting")
     return widget_tree
+
+
+def image2surface(img):
+    if img == None:
+        return None
+    file_desc = StringIO.StringIO()
+    img.save(file_desc, format="PNG")
+    file_desc.seek(0)
+    surface = cairo.ImageSurface.create_from_png(file_desc)
+    return surface
 
 
 def surface2image(surface):
@@ -127,7 +139,6 @@ def surface2image(surface):
     background = Image.new("RGB", img.size, (255, 255, 255))
     background.paste(img, mask=img.split()[3]) # 3 is the alpha channel
     return background
-
 
 
 def image2pixbuf(img):
@@ -188,3 +199,18 @@ def ask_confirmation(parent):
         print "User cancelled"
         return False
     return True
+
+
+def sizeof_fmt(num):
+        STRINGS = [
+            _('%3.1f bytes'),
+            _('%3.1f KB'),
+            _('%3.1f MB'),
+            _('%3.1f GB'),
+            _('%3.1f TB'),
+        ]
+        for string in STRINGS:
+            if num < 1024.0:
+                return string % (num)
+            num /= 1024.0
+        return STRINGS[-1] % (num)

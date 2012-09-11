@@ -3,6 +3,7 @@ Code relative to page handling.
 """
 
 import codecs
+from copy import copy
 import Image
 import os
 import os.path
@@ -13,6 +14,7 @@ import pyocr.builders
 import pyocr.pyocr
 
 from paperwork.model.common.page import BasicPage
+from paperwork.model.common.page import PageExporter
 from paperwork.model.config import PaperworkConfig
 from paperwork.util import dummy_progress_cb
 from paperwork.util import split_words
@@ -34,6 +36,7 @@ class ImgPage(BasicPage):
 
     ORIENTATION_PORTRAIT = 0
     ORIENTATION_LANDSCAPE = 1
+
 
     def __init__(self, doc, page_nb):
         BasicPage.__init__(self, doc, page_nb)
